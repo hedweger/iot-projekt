@@ -4,11 +4,8 @@
 # This code is designed to work with the TMG39931_I2CS I2C Mini Module available from ControlEverything.com.
 # https://www.controleverything.com/content/Color?sku=TMG39931_I2CS#tabs-0-product_tabset-2
 
-import smbus
 import time
-
-# Get I2C bus
-bus = smbus.SMBus(1)
+from machine import I2C
 
 # I2C address of the device
 TMG39931_DEFAULT_ADDRESS			= 0x39
@@ -68,51 +65,42 @@ TMG39931_REG_CONTROL_AGAIN_16		= 0x02 # RGBC GAIN VALUE - 16x Gain
 TMG39931_REG_CONTROL_AGAIN_64		= 0x03 # RGBC GAIN VALUE - 64x Gain
 
 class TMG39931():
-	def __init__(self):
-		self.enable_selection()
-		self.time_selection()
-		self.gain_selection()
-	
-	def enable_selection(self):
-		"""Select the ENABLE register configuration from the given provided values"""
-		ENABLE_CONFIGURATION = (TMG39931_REG_ENABLE_WEN | TMG39931_REG_ENABLE_PEN | TMG39931_REG_ENABLE_AEN | TMG39931_REG_ENABLE_PON)
-		bus.write_byte_data(TMG39931_DEFAULT_ADDRESS, TMG39931_REG_ENABLE, ENABLE_CONFIGURATION)
-	
-	def time_selection(self):
-		"""Select the ATIME register configuration from the given provided values"""
-		bus.write_byte_data(TMG39931_DEFAULT_ADDRESS, TMG39931_REG_ATIME, TMG39931_REG_ATIME_712)
-		
-		"""Select the WTIME register configuration from the given provided values"""
-		bus.write_byte_data(TMG39931_DEFAULT_ADDRESS, TMG39931_REG_WTIME, TMG39931_REG_WTIME_2_78)
-	
-	def gain_selection(self):
-		"""Select the CONTROL register configuration from the given provided values"""
-		GAIN_CONFIGURATION = (TMG39931_REG_CONTROL_LED_100 | TMG39931_REG_CONTROL_PGAIN_1 | TMG39931_REG_CONTROL_AGAIN_1)
-		bus.write_byte_data(TMG39931_DEFAULT_ADDRESS, TMG39931_REG_CONTROL, GAIN_CONFIGURATION)
-	
-	def readluminance(self):
-		"""Read data back from TMG39931_REG_CDATAL(0x94), 9 bytes
-		cData LSB, cData MSB, red LSB, red MSB, green LSB, green MSB, blue LSB, blue MSB, proximity"""
-		data = bus.read_i2c_block_data(TMG39931_DEFAULT_ADDRESS, TMG39931_REG_CDATAL, 9)
-		
-		# Convert the data
-		cData = data[1] * 256.0 + data[0]
-		red = data[3] * 256.0 + data[2]
-		green = data[5] * 256.0 + data[4]
-		blue = data[7] * 256.0 + data[6]
-		proximity = data[8]
-		
-		return {'i' : cData, 'r' : red, 'g' : green, 'b' : blue, 'p' : proximity}
+    def __init__(self, i2c):
+        self.bus = i2c
+        self.enable_selection()
+        self.time_selection()
+        self.gain_selection()
+        
+    def enable_selection(self):
+        """Select the ENABLE register configuration from the given provided values"""
+        ENABLE_CONFIGURATION = (TMG39931_REG_ENABLE_WEN | TMG39931_REG_ENABLE_PEN | TMG39931_REG_ENABLE_AEN | TMG39931_REG_ENABLE_PON | TMG39931_REG_ENABLE_GEN)
+        self.bus.writeto_mem(TMG39931_DEFAULT_ADDRESS, TMG39931_REG_ENABLE, str(ENABLE_CONFIGURATION))
 
-from TMG39931 import TMG39931
-tmg39931 = TMG39931()
+    def time_selection(self):
+        """Select the ATIME register configuration from the given provided values"""
+        self.bus.writeto_mem(TMG39931_DEFAULT_ADDRESS, TMG39931_REG_ATIME, str(TMG39931_REG_ATIME_2_78))
 
-while True:
-	lum = tmg39931.readluminance()
-	print "InfraRed Luminance : %d lux"%(lum['i'])
-	print "Red Color Luminance : %d lux"%(lum['r'])
-	print "Green Color Luminance : %d lux"%(lum['g'])
-	print "Blue Color Luminance : %d lux"%(lum['b'])
-	print "Proximity of the device : %d " %(lum['p'])
-	print " ***************************************************** "
-	time.sleep(1)
+        """Select the WTIME register configuration from the given provided values"""
+        self.bus.writeto_mem(TMG39931_DEFAULT_ADDRESS, TMG39931_REG_WTIME, str(TMG39931_REG_WTIME_2_78))
+
+    def gain_selection(self):
+        """Select the CONTROL register configuration from the given provided values"""
+        GAIN_CONFIGURATION = TMG39931_REG_CONTROL_AGAIN_1
+        self.bus.writeto_mem(TMG39931_DEFAULT_ADDRESS, TMG39931_REG_CONTROL, str(GAIN_CONFIGURATION))
+
+    def readluminance(self):
+        """Read data back from TMG39931_REG_CDATAL(0x94), 9 bytes
+        cData LSB, cData MSB, red LSB, red MSB, green LSB, green MSB, blue LSB, blue MSB, proximity"""
+        data = self.bus.readfrom_mem(TMG39931_DEFAULT_ADDRESS, TMG39931_REG_CDATAL, 9)
+        # Convert the data
+        cData = data[1] * 256.0 + data[0]
+        red = data[3] * 256.0 + data[2]
+        green = data[5] * 256.0 + data[4]
+        blue = data[7] * 256.0 + data[6]
+        proximity = data[8]
+
+        return {'i' : cData, 'r' : red, 'g' : green, 'b' : blue, 'p' : proximity}
+
+
+
+

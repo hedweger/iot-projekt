@@ -1,5 +1,5 @@
 from machine import Pin
-from my9221 import MY9221
+from ledbar.my9221 import MY9221
 
 # ESP8266
 ledbar = MY9221(Pin(4), Pin(5))
